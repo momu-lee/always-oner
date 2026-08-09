@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>𝑻𝒐 𝒐𝒖𝒓 𝒃𝒆𝒔𝒕 𝑱𝒖𝒏𝒈𝒍𝒆𝒓 : 𝑶𝒏𝒆𝒓</title>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, increment, getDocs, query, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBKtI9ZXlcpjpmAhfdUGK242n8MW5HkLeM",
+      authDomain: "for-oner.firebaseapp.com",
+      projectId: "for-oner",
+      storageBucket: "for-oner.firebasestorage.app",
+      messagingSenderId: "688684382728",
+      appId: "1:688684382728:web:b8d91a3d26ddc2c1a52fbd",
+      measurementId: "G-E6MFJHMY8W"
+    };
+
+    // New independent Firebase project: for-oner
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const messagesRef = collection(db, "sticky_notes");
+
+    window.db = db;
+    window.doc = doc;
+    window.deleteDoc = deleteDoc;
+    window.updateDoc = updateDoc;
+    window.increment = increment;
+    window.messagesRef = messagesRef;
+    window.addDoc = addDoc;
+    window.getDocs = getDocs;
+    window.query = query;
+    window.limit = limit;
+    window.onSnapshot = onSnapshot;
+    window.serverTimestamp = serverTimestamp;
+  </script>
+
+  <style>
+    :root {
+      --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --text-dark: #40364d;
+      --accent-rose: #8d72b8;
+      --accent-rose-hover: #765aa3;
+      --error-red: #b94a68;
+
+      --lavender-50: #faf7ff;
+      --lavender-100: #f3edff;
+      --lavender-200: #e7dcfa;
+      --lavender-300: #d6c5f0;
+      --lavender-400: #bca4df;
+      --lavender-500: #9d82c8;
+      --lavender-600: #8d72b8;
+      --lavender-700: #765aa3;
+      --lavender-shadow: rgba(118, 90, 163, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: var(--main-font);
+      color: var(--text-dark);
+      min-height: 100svh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative;
+      background-color: #f6f1fc;
+    }
+
+    /* 右上角鎖頭與 Hover/Click 控制區塊 */
+    .admin-container {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 2500;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .admin-toggle-btn {
+      background: transparent;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.2s, transform 0.2s;
+      line-height: 1;
+      padding: 4px;
+    }
+    .admin-toggle-btn:hover {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .admin-panel {
+      display: none;
+      background: #ffffff;
+      border: 1px solid #ddd1ee;
+      padding: 12px 14px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(64, 54, 77, 0.18);
+      flex-direction: column;
+      gap: 10px;
+      min-width: 150px;
+    }
+
+    body.is-unlocked .admin-container:hover .admin-panel {
+      display: flex !important;
+    }
+
+    .admin-panel input {
+      font-family: var(--main-font);
+      width: 100%;
+      background: #fbf9ff;
+      border: 1px solid #ddd1ee;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 12px;
+      outline: none;
+    }
+    .admin-panel input:focus {
+      border-color: var(--accent-rose);
+    }
+
+    .admin-dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dark);
+      border-bottom: 1px dashed #ddd1ee;
+      padding-bottom: 8px;
+    }
+
+    .admin-stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .admin-stat-value {
+      color: var(--accent-rose);
+      font-weight: 700;
+    }
+
+    .export-btn {
+      font-family: var(--main-font);
+      background: var(--accent-rose);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+      text-align: center;
+    }
+    .export-btn:hover {
+      background: var(--accent-rose-hover);
+    }
+
+    /* ---------------- 管理員專用編輯面板 ---------------- */
+    .input-stage {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100svh;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 4000;
+      background: rgba(246, 241, 252, 0.80);
+      backdrop-filter: blur(12px);
+      padding: 16px;
+    }
+
+    .input-card {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      border: 1.5px solid #ddd1ee;
+      padding: 28px 24px;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px rgba(118, 90, 163, 0.18);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--text-dark);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      background: transparent;
+      border: none;
+      color: #8875a0;
+      font-size: 22px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .close-btn:hover { color: var(--accent-rose); }
+
+    .input-card h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      text-align: center;
+      color: var(--accent-rose);
+      font-family: var(--main-font);
+      margin-bottom: 4px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .error-msg {
+      color: var(--error-red);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 3px;
+      display: none;
+      text-align: left;
+    }
+
+    .input-card input, .input-card textarea {
+      font-family: var(--main-font);
+      width: 100%;
+      background: #fbf9ff;
+      border: 1.5px solid #ddd1ee;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--text-dark);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-card input:focus, .input-card textarea:focus {
+      border-color: var(--accent-rose);
+      box-shadow: 0 0 0 3px rgba(118, 90, 163, 0.15);
+    }
+
+    .input-card textarea {
+      resize: none;
+      height: 110px;
+    }
+
+    .submit-btn {
+      font-family: var(--main-font);
+      width: 100%;
+      background: var(--accent-rose);
+      color: #ffffff;
+      font-weight: 600;
+      border: none;
+      padding: 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(118, 90, 163, 0.25);
+      margin-top: 4px;
+    }
+    .submit-btn:hover { background: var(--accent-rose-hover); }
+
+    /* 公開新增留言按鈕 */
+    .public-add-btn {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      z-index: 2600;
+      border: 1px solid rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.92);
+      color: var(--accent-rose);
+      font-family: var(--main-font);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(64, 54, 77, 0.16);
+      backdrop-filter: blur(8px);
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .public-add-btn:hover {
+      transform: translateX(-50%) translateY(-2px);
+      background: #ffffff;
+      box-shadow: 0 12px 28px rgba(58, 46, 43, 0.2);
+    }
+
+    /* ---------------- 階段 2：滾動畫布與電腦/手機獨立背景 ---------------- */
+    .viewport {
+      width: 100vw;
+      height: 100svh;
+      overflow-x: auto;
+      overflow-y: hidden;
+      cursor: grab;
+      position: relative;
+      user-select: none;
+      -webkit-overflow-scrolling: touch;
+      background-color: #f6f1fc;
+    }
+    .viewport:active { cursor: grabbing; }
+
+    .viewport::-webkit-scrollbar { height: 4px; width: 4px; }
+    .viewport::-webkit-scrollbar-thumb {
+      background: rgba(118, 90, 163, 0.25);
+      border-radius: 10px;
+    }
+
+    /* 🖼️ 電腦版背景圖：完全定格、單張不重複、滑過去絕不變白 */
+    .viewport::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100svh;
+      background-image: url('https://images.plurk.com/JPuEfTTCcgDHFX6r53OW2.jpg');
+      background-size: cover;
+      background-position: center top;
+      background-repeat: no-repeat;
+      opacity: 0.60;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .board-stage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100svh;
+      min-width: 100vw;
+      padding: 20px;
+      pointer-events: auto;
+      perspective: 1000px;
+      background-color: transparent;
+      z-index: 1;
+    }
+
+    /* 📱 手機版背景圖：完全定格、單張不重複 */
+    @media (max-width: 768px) {
+      .viewport {
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+      .viewport::before {
+        background-image: url('https://images.plurk.com/4SsdgjXIDWOYga74mE9s6S.jpg');
+      }
+      .board-stage {
+        width: 100vw !important;
+        min-height: 100svh;
+        height: auto !important;
+        padding-bottom: 100px;
+      }
+    }
+
+    .sticky-note {
+      font-family: var(--main-font);
+      position: absolute;
+      z-index: 2;
+      width: 170px;
+      height: 140px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(58, 46, 43, 0.15), 0 2px 6px rgba(0, 0, 0, 0.04);
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      opacity: 0.92;
+      transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+      animation: pasteIn 0.5s ease-out forwards, 
+                 smoothRiverFlow 12s ease-in-out infinite alternate;
+      user-select: none;
+      will-change: transform;
+    }
+
+    @keyframes smoothRiverFlow {
+      0% { transform: translate3d(0, 0, 0) rotate(var(--rot)); }
+      50% { transform: translate3d(var(--dx1), var(--dy1), 0) rotate(calc(var(--rot) + 2deg)); }
+      100% { transform: translate3d(var(--dx2), var(--dy2), 0) rotate(calc(var(--rot) - 2deg)); }
+    }
+
+    @keyframes pasteIn {
+      from { opacity: 0; transform: scale(1) rotate(calc(var(--rot) + 3deg)); }
+      to { opacity: 0.92; transform: scale(1) rotate(var(--rot)); }
+    }
+
+    .sticky-note:hover {
+      opacity: 1 !important;
+      transform: scale(1.08) rotate(0deg) !important;
+      z-index: 9999 !important;
+      box-shadow: 0 18px 38px rgba(64, 54, 77, 0.22);
+    }
+
+    .sticky-content {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+      white-space: pre-wrap;
+      color: #352d40;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      max-height: 65px; 
+    }
+
+    .more-indicator {
+      color: #715d8d;
+      font-size: 10px;
+      font-weight: bold;
+      text-align: right;
+      margin-top: 1px;
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px dashed rgba(64, 54, 77, 0.18);
+      padding-top: 4px;
+      margin-top: 2px;
+    }
+
+    .author-group {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      max-width: 110px;
+    }
+
+    .sticky-author {
+      font-size: 11px;
+      font-weight: 700;
+      color: #55456b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 65px;
+    }
+
+    .icon-btn-inline {
+      font-family: var(--main-font);
+      background: transparent;
+      border: none;
+      font-size: 11px;
+      cursor: pointer;
+      color: #55456b;
+      padding: 0 1px;
+      line-height: 1;
+      transition: transform 0.2s;
+    }
+    .icon-btn-inline:hover { transform: scale(1.25); }
+
+    .like-btn {
+      font-family: var(--main-font);
+      background: transparent;
+      border: none;
+      font-size: 11px;
+      cursor: pointer;
+      color: #8d5ca8;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 1px;
+      transition: transform 0.2s;
+    }
+    .like-btn:hover { transform: scale(1.15); }
+
+    /* ---------------- 階段 3：點擊查看全文彈窗 ---------------- */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100svh;
+      background: rgba(64, 54, 77, 0.35);
+      backdrop-filter: blur(8px);
+      z-index: 3000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .modal-card {
+      font-family: var(--main-font);
+      width: 100%;
+      max-width: 380px;
+      min-height: 200px;
+      padding: 24px;
+      border-radius: 18px;
+      box-shadow: 0 25px 50px rgba(64, 54, 77, 0.25);
+      border: 1.5px solid rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      z-index: 3001;
+      transition: background-color 0.2s ease;
+    }
+
+    .modal-text {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.6;
+      color: #352d40;
+      max-height: 260px;
+      overflow-y: auto;
+      word-break: break-word;
+      white-space: pre-wrap;
+      padding-right: 28px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      border-top: 1px dashed rgba(58, 46, 43, 0.2);
+      padding-top: 8px;
+    }
+
+    .modal-author {
+      font-size: 13px;
+      font-weight: 700;
+      color: #55456b;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      color: #55456b;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 右上角鎖頭與 Hover/Click 控制區塊 -->
+  <div class="admin-container" id="adminContainer">
+    <button class="admin-toggle-btn" id="adminToggleBtn">🔒</button>
+    
+    <div class="admin-panel" id="adminPanel">
+      <input type="password" id="adminPasswordInput" placeholder="" />
+      
+      <div id="adminDashboardSection" style="display: none;">
+        <div class="admin-dashboard">
+          <div class="admin-stat-item">
+            <span>總便利貼張數:</span>
+            <span class="admin-stat-value" id="statTotalNotes">0</span>
+          </div>
+          <div class="admin-stat-item">
+            <span>累積總讚數:</span>
+            <span class="admin-stat-value" id="statTotalLikes">0</span>
+          </div>
+        </div>
+        <button class="export-btn" id="exportCsvBtn" style="margin-top: 8px;">📥 匯出 CSV 備份</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編輯專用彈窗（僅管理員解鎖後可使用） -->
+  <div class="input-stage" id="inputStage">
+    <div class="input-card">
+      <button class="close-btn" id="closeBtn">✕</button>
+      <h1 id="inputStageTitle">✍️ 新增留言</h1>
+      
+      <div class="field-group">
+        <div class="error-msg" id="nicknameErr">請輸入暱稱!</div>
+        <input type="text" id="nickname" placeholder="暱稱..." />
+      </div>
+
+      <div class="field-group">
+        <div class="error-msg" id="messageErr">請輸入想說的話!</div>
+        <textarea id="message" placeholder="想說的話..."></textarea>
+      </div>
+
+      <button class="submit-btn" id="submitBtn">送出留言</button>
+    </div>
+  </div>
+
+  <!-- 公開新增留言按鈕 -->
+  <button class="public-add-btn" id="publicAddBtn" type="button">✍️ 新增留言</button>
+
+  <!-- 2. 滾動畫布 -->
+  <div class="viewport" id="viewport">
+    <div class="board-stage" id="boardStage"></div>
+  </div>
+
+  <!-- 3. 查看全文彈窗 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-card" id="modalCard">
+      <button class="modal-close" id="modalCloseBtn">✕</button>
+      <div class="modal-text" id="modalText"></div>
+      <div class="modal-footer">
+        <div class="modal-author">
+          <span id="modalAuthor"></span>
+          <button class="icon-btn-inline" id="modalEditBtn" style="display:none;" title="編輯">✏️</button>
+          <button class="icon-btn-inline" id="modalDeleteBtn" style="display:none;" title="刪除">🗑️</button>
+        </div>
+        <div class="modal-actions">
+          <button class="like-btn" id="modalLikeBtn">💗 <span id="modalLikeCount">0</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    let lastHue = null;
+    let isAdmin = localStorage.getItem('isAdminUnlocked') === 'true';
+    let editingDocId = null;
+    let allNotesMap = new Map();
+
+    // 每個瀏覽器建立一個本地識別碼，用來判斷「自己的留言」。
+    // 不需要登入；清除瀏覽器資料後，原本的留言將無法再被此瀏覽器辨識為自己的。
+    const OWNER_KEY_STORAGE = 'forOnerOwnerKey';
+    const ownerKey = localStorage.getItem(OWNER_KEY_STORAGE) || (
+      (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    );
+    localStorage.setItem(OWNER_KEY_STORAGE, ownerKey);
+
+    const USER_EDIT_WINDOW_MS = 15 * 60 * 1000;
+
+    function canUserManageNote(data) {
+      if (!data || !data.ownerKey) return false;
+      const createdAtMs = Number(data.createdAtMs || 0);
+      return data.ownerKey === ownerKey
+        && createdAtMs > 0
+        && (Date.now() - createdAtMs) <= USER_EDIT_WINDOW_MS;
+    }
+
+    function canManageNote(data) {
+      return isAdmin || canUserManageNote(data);
+    }
+
+    const adminContainer = document.getElementById('adminContainer');
+    const adminToggleBtn = document.getElementById('adminToggleBtn');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminPasswordInput = document.getElementById('adminPasswordInput');
+    const adminDashboardSection = document.getElementById('adminDashboardSection');
+    const statTotalNotes = document.getElementById('statTotalNotes');
+    const statTotalLikes = document.getElementById('statTotalLikes');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+
+    function refreshAdminUI() {
+      if (isAdmin) {
+        document.body.classList.add('is-unlocked');
+        adminToggleBtn.innerText = '🔓';
+        adminPasswordInput.style.display = 'none';
+        adminDashboardSection.style.display = 'block';
+        adminPanel.style.display = '';
+        updateAdminDashboardStats();
+      } else {
+        document.body.classList.remove('is-unlocked');
+        adminToggleBtn.innerText = '🔒';
+        adminPasswordInput.style.display = 'block';
+        adminDashboardSection.style.display = 'none';
+        adminPanel.style.display = 'none';
+      }
+    }
+
+    refreshAdminUI();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      adminToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isAdmin) {
+          isAdmin = false;
+          localStorage.removeItem('isAdminUnlocked');
+          refreshAdminUI();
+          location.reload();
+        } else {
+          adminPanel.style.display = adminPanel.style.display === 'flex' ? 'none' : 'flex';
+          if (adminPanel.style.display === 'flex') {
+            adminPasswordInput.value = '';
+            adminPasswordInput.focus();
+          }
+        }
+      });
+
+      adminPasswordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          if (adminPasswordInput.value === "two851011") {
+            isAdmin = true;
+            localStorage.setItem('isAdminUnlocked', 'true');
+            adminPasswordInput.value = '';
+            refreshAdminUI();
+            location.reload();
+          } else {
+            adminPasswordInput.value = '';
+            adminPasswordInput.focus();
+          }
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!isAdmin && adminPanel && !adminContainer.contains(e.target)) {
+          adminPanel.style.display = 'none';
+        }
+      });
+
+      exportCsvBtn.addEventListener('click', () => {
+        exportNotesToCsv();
+      });
+    });
+
+    function updateAdminDashboardStats() {
+      let totalNotes = allNotesMap.size;
+      let totalLikes = 0;
+      allNotesMap.forEach(data => {
+        totalLikes += (data.likes || 0);
+      });
+      if (statTotalNotes) statTotalNotes.innerText = totalNotes;
+      if (statTotalLikes) statTotalLikes.innerText = totalLikes;
+    }
+
+    function exportNotesToCsv() {
+      if (allNotesMap.size === 0) {
+        alert("目前沒有可導出的便利貼資料！");
+        return;
+      }
+
+      let csvRows = [["ID", "暱稱", "想說的話", "按讚數", "時間"]];
+
+      allNotesMap.forEach((data, id) => {
+        let dateStr = "";
+        if (data.timestamp && data.timestamp.toDate) {
+          dateStr = data.timestamp.toDate().toLocaleString();
+        }
+        let nickname = `"${(data.nickname || '').replace(/"/g, '""')}"`;
+        let text = `"${(data.text || '').replace(/"/g, '""')}"`;
+        let likes = data.likes || 0;
+        csvRows.push([id, nickname, text, likes, `"${dateStr}"`]);
+      });
+
+      let csvContent = "\uFEFF" + csvRows.map(e => e.join(",")).join("\n");
+      let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      let url = URL.createObjectURL(blob);
+      let link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `玫瑰花園留言備份_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function generateDynamicMorandiColor() {
+      // 全部限制在薰衣草紫色系，只做明度/飽和度的小幅變化。
+      const lavenderPalette = [
+        '#f4edff',
+        '#eee4fb',
+        '#e8dcf8',
+        '#dfd0f2',
+        '#d6c5ee',
+        '#eadff7',
+        '#f0e8fb',
+        '#dcccef'
+      ];
+
+      let color;
+      do {
+        color = lavenderPalette[Math.floor(Math.random() * lavenderPalette.length)];
+      } while (color === lastHue && lavenderPalette.length > 1);
+
+      lastHue = color;
+      return color;
+    }
+
+    const NOTES_PER_PAGE = 15;
+    const NOTE_WIDTH = 170;
+    const NOTE_HEIGHT = 140;
+
+    let globalNoteCount = 0;
+    const renderedDocIds = new Set();
+    let currentUnusedSlotsInPage = [];
+
+    function generatePosition(index) {
+      const isMobile = window.innerWidth <= 768;
+      
+      if (isMobile) {
+        const cols = 2;
+        const colWidth = window.innerWidth / cols;
+        const colIndex = index % cols;
+        const rowIndex = Math.floor(index / cols);
+        
+        const x = colIndex * colWidth + (colWidth - NOTE_WIDTH) / 2;
+        const y = rowIndex * (NOTE_HEIGHT + 24) + 30;
+        return { x, y };
+      } else {
+        if (currentUnusedSlotsInPage.length === 0) {
+          const pageIndex = Math.floor(index / NOTES_PER_PAGE);
+          const pageWidth = window.innerWidth;
+          const pageHeight = window.innerHeight;
+          const cols = 5;
+          const rows = 3;
+          const cellWidth = pageWidth / cols;
+          const cellHeight = pageHeight / rows;
+          let slots = [];
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const cellX = pageIndex * pageWidth + c * cellWidth;
+              const cellY = r * cellHeight;
+              const maxOffsetX = Math.max(0, cellWidth - NOTE_WIDTH - 20);
+              const maxOffsetY = Math.max(0, cellHeight - NOTE_HEIGHT - 20);
+              const randomX = cellX + 10 + Math.floor(Math.random() * maxOffsetX);
+              const randomY = cellY + 10 + Math.floor(Math.random() * maxOffsetY);
+              slots.push({ x: randomX, y: randomY });
+            }
+          }
+
+          for (let i = slots.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [slots[i], slots[j]] = [slots[j], slots[i]];
+          }
+          currentUnusedSlotsInPage = slots;
+        }
+        return currentUnusedSlotsInPage.pop();
+      }
+    }
+
+    const checkFirebase = setInterval(() => {
+      if (window.messagesRef) {
+        clearInterval(checkFirebase);
+        initApp();
+      }
+    }, 100);
+
+    function initApp() {
+      const inputStage = document.getElementById('inputStage');
+      const nicknameInput = document.getElementById('nickname');
+      const messageInput = document.getElementById('message');
+      
+      const nicknameErr = document.getElementById('nicknameErr');
+      const messageErr = document.getElementById('messageErr');
+
+      const submitBtn = document.getElementById('submitBtn');
+      const closeBtn = document.getElementById('closeBtn');
+      const publicAddBtn = document.getElementById('publicAddBtn');
+      const inputStageTitle = document.getElementById('inputStageTitle');
+
+      const modalOverlay = document.getElementById('modalOverlay');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+      const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+      const modalEditBtn = document.getElementById('modalEditBtn');
+      const modalLikeBtn = document.getElementById('modalLikeBtn');
+      const viewport = document.getElementById('viewport');
+
+      function clearErrors() {
+        nicknameErr.style.display = 'none';
+        messageErr.style.display = 'none';
+      }
+
+      function hideInputModal() {
+        inputStage.style.display = 'none';
+        editingDocId = null;
+        clearErrors();
+        inputStageTitle.innerText = '✍️ 新增留言';
+        submitBtn.innerText = '送出留言';
+      }
+
+      function openAddStage() {
+        clearErrors();
+        editingDocId = null;
+        nicknameInput.value = '';
+        messageInput.value = '';
+        inputStageTitle.innerText = '✍️ 新增留言';
+        submitBtn.innerText = '送出留言';
+        inputStage.style.display = 'flex';
+        nicknameInput.focus();
+      }
+
+      function openEditStage(targetDocId) {
+        clearErrors();
+        const data = allNotesMap.get(targetDocId);
+
+        if (!data || !canManageNote(data)) {
+          alert(isAdmin ? '找不到這則留言。' : '這則留言已超過 15 分鐘，或不是你建立的留言。');
+          return;
+        }
+
+        editingDocId = targetDocId;
+        inputStageTitle.innerText = '✏️ 編輯留言';
+        submitBtn.innerText = '儲存修改';
+
+        nicknameInput.value = data.nickname || '';
+        messageInput.value = data.text || '';
+
+        inputStage.style.display = 'flex';
+        nicknameInput.focus();
+      }
+
+      modalCloseBtn.addEventListener('click', () => { modalOverlay.style.display = 'none'; });
+      closeBtn.addEventListener('click', hideInputModal);
+      publicAddBtn.addEventListener('click', openAddStage);
+      
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) modalOverlay.style.display = 'none';
+      });
+
+      modalLikeBtn.addEventListener('click', async () => {
+        const docId = modalLikeBtn.dataset.currentId;
+        if (docId) {
+          try {
+            const noteRef = window.doc(window.db, "sticky_notes", docId);
+            await window.updateDoc(noteRef, {
+              likes: window.increment(1)
+            });
+          } catch (err) {
+            console.log("按讚失敗：" + err.message);
+          }
+        }
+      });
+
+      modalEditBtn.addEventListener('click', () => {
+        const docId = modalEditBtn.dataset.currentId;
+        if (docId) {
+          const data = allNotesMap.get(docId);
+          if (!data || !canManageNote(data)) {
+            alert(isAdmin ? '找不到這則留言。' : '這則留言已超過 15 分鐘，或不是你建立的留言。');
+            return;
+          }
+          modalOverlay.style.display = 'none';
+          openEditStage(docId);
+        }
+      });
+
+      modalDeleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const docId = modalDeleteBtn.dataset.currentId;
+        if (docId) {
+          const data = allNotesMap.get(docId);
+          if (!data || !canManageNote(data)) {
+            alert(isAdmin ? '找不到這則留言。' : '這則留言已超過 15 分鐘，或不是你建立的留言。');
+            return;
+          }
+          modalOverlay.style.display = 'none';
+          await deleteNoteFromCloud(docId);
+        }
+      });
+
+      submitBtn.addEventListener('click', async () => {
+        clearErrors();
+        const nickname = nicknameInput.value.trim();
+        const text = messageInput.value.trim();
+
+        let hasError = false;
+        if (!nickname) { nicknameErr.style.display = 'block'; hasError = true; }
+        if (!text) { messageErr.style.display = 'block'; hasError = true; }
+        if (hasError) return;
+
+        submitBtn.innerText = "儲存中...";
+        submitBtn.disabled = true;
+
+        try {
+          if (editingDocId && window.db) {
+            const currentData = allNotesMap.get(editingDocId);
+
+            if (!currentData || !canManageNote(currentData)) {
+              throw new Error(isAdmin
+                ? "找不到這則留言"
+                : "這則留言已超過 15 分鐘，或不是你建立的留言");
+            }
+
+            const noteRef = window.doc(window.db, "sticky_notes", editingDocId);
+            await window.updateDoc(noteRef, {
+              nickname: nickname,
+              text: text
+            });
+
+            const updatedData = {
+              ...currentData,
+              nickname: nickname,
+              text: text
+            };
+            allNotesMap.set(editingDocId, updatedData);
+
+            hideInputModal();
+          } else if (window.db) {
+            await window.addDoc(window.messagesRef, {
+              nickname: nickname,
+              text: text,
+              likes: 0,
+              timestamp: window.serverTimestamp(),
+              createdAtMs: Date.now(),
+              ownerKey: ownerKey
+            });
+
+            hideInputModal();
+          }
+        } catch (err) {
+          console.log("修改失敗：" + err.message);
+        } finally {
+          submitBtn.innerText = "儲存修改";
+          submitBtn.disabled = false;
+        }
+      });
+
+      let isMouseDown = false;
+      let startX = 0, startY = 0;
+      let startScrollLeft = 0, startScrollTop = 0;
+      let velocityX = 0, velocityY = 0;
+      let lastX = 0, lastY = 0;
+      let animationFrameId = null;
+
+      function stopInertia() {
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+      }
+
+      function applyInertia() {
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          if (Math.abs(velocityY) > 0.5) {
+            viewport.scrollTop -= velocityY;
+            velocityY *= 0.92;
+            animationFrameId = requestAnimationFrame(applyInertia);
+          } else { velocityY = 0; }
+        } else {
+          if (Math.abs(velocityX) > 0.5) {
+            viewport.scrollLeft -= velocityX;
+            velocityX *= 0.92;
+            animationFrameId = requestAnimationFrame(applyInertia);
+          } else { velocityX = 0; }
+        }
+      }
+
+      viewport.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.sticky-note') || e.target.closest('.admin-container')) return;
+        stopInertia();
+        isMouseDown = true;
+        startX = e.pageX;
+        startY = e.pageY;
+        lastX = e.pageX;
+        lastY = e.pageY;
+        startScrollLeft = viewport.scrollLeft;
+        startScrollTop = viewport.scrollTop;
+        velocityX = 0;
+        velocityY = 0;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isMouseDown) return;
+        e.preventDefault();
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          const currentY = e.pageY;
+          viewport.scrollTop = startScrollTop - (currentY - startY);
+          velocityY = currentY - lastY;
+          lastY = currentY;
+        } else {
+          const currentX = e.pageX;
+          viewport.scrollLeft = startScrollLeft - (currentX - startX);
+          velocityX = currentX - lastX;
+          lastX = currentX;
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        applyInertia();
+      });
+
+      viewport.addEventListener('wheel', (e) => {
+        stopInertia();
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile) {
+          if (e.deltaY !== 0) viewport.scrollTop += e.deltaY;
+        } else {
+          if (e.deltaY !== 0) viewport.scrollLeft += e.deltaY;
+        }
+      }, { passive: true });
+
+      const q = window.query(window.messagesRef, window.limit(100));
+      
+      window.getDocs(q).then((querySnapshot) => {
+        querySnapshot.forEach((docSnap) => {
+          const docId = docSnap.id;
+          const data = docSnap.data();
+          allNotesMap.set(docId, data);
+          if (!renderedDocIds.has(docId)) {
+            renderedDocIds.add(docId);
+            createStickyNote(docId, data);
+          }
+        });
+        updateAdminDashboardStats();
+      }).catch((err) => {
+        console.log("初始化載入中...");
+      });
+
+      window.onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          const docId = change.doc.id;
+          const data = change.doc.data();
+
+          if (change.type === "added") {
+            if (renderedDocIds.has(docId)) return;
+
+            allNotesMap.set(docId, data);
+            renderedDocIds.add(docId);
+            createStickyNote(docId, data);
+          }
+          if (change.type === "modified") {
+            allNotesMap.set(docId, data);
+            
+            const noteEl = document.getElementById(`note-${docId}`);
+            if (noteEl) {
+              const contentEl = document.getElementById(`content-${docId}`);
+              const nickname = escapeHtml(data.nickname || '無名氏');
+              const fullText = escapeHtml(data.text || '');
+              const authorText = `— ${nickname}`;
+              if (contentEl) contentEl.innerText = fullText;
+              const authorEl = noteEl.querySelector('.sticky-author');
+              if (authorEl) {
+                authorEl.innerText = authorText;
+                authorEl.title = authorText;
+              }
+              const countEl = document.getElementById(`like-count-${docId}`);
+              if (countEl) countEl.innerText = data.likes || 0;
+              refreshNoteManageButtons(docId, data);
+            }
+
+            const modalLikeBtn = document.getElementById('modalLikeBtn');
+            const modalLikeCount = document.getElementById('modalLikeCount');
+            if (modalOverlay.style.display === 'flex' && modalLikeBtn.dataset.currentId === docId) {
+              modalLikeCount.innerText = data.likes || 0;
+            }
+          }
+          if (change.type === "removed") {
+            allNotesMap.delete(docId);
+            renderedDocIds.delete(docId);
+
+            const el = document.getElementById(`note-${docId}`);
+            if (el) el.remove();
+            if (modalOverlay.style.display === 'flex' && modalDeleteBtn.dataset.currentId === docId) {
+              modalOverlay.style.display = 'none';
+            }
+          }
+        });
+        updateAdminDashboardStats();
+      });
+    }
+
+    function refreshNoteManageButtons(docId, data) {
+      const noteEl = document.getElementById(`note-${docId}`);
+      if (!noteEl) return;
+
+      const canManage = canManageNote(data);
+      const authorGroup = noteEl.querySelector('.author-group');
+      if (!authorGroup) return;
+
+      const oldEdit = authorGroup.querySelector('.note-edit-btn');
+      const oldDelete = authorGroup.querySelector('.note-delete-btn');
+
+      if (canManage && !oldEdit) {
+        const btn = document.createElement('button');
+        btn.className = 'icon-btn-inline note-edit-btn';
+        btn.title = '編輯';
+        btn.innerText = '✏️';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openEditStage(docId);
+        });
+        authorGroup.appendChild(btn);
+      } else if (!canManage && oldEdit) {
+        oldEdit.remove();
+      }
+
+      if (canManage && !oldDelete) {
+        const btn = document.createElement('button');
+        btn.className = 'icon-btn-inline note-delete-btn';
+        btn.title = '刪除';
+        btn.innerText = '🗑️';
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const currentData = allNotesMap.get(docId) || data;
+          if (!canManageNote(currentData)) {
+            alert(isAdmin ? '找不到這則留言。' : '這則留言已超過 15 分鐘，或不是你建立的留言。');
+            return;
+          }
+          await deleteNoteFromCloud(docId);
+        });
+        authorGroup.appendChild(btn);
+      } else if (!canManage && oldDelete) {
+        oldDelete.remove();
+      }
+    }
+
+    function createStickyNote(docId, data) {
+      const boardStage = document.getElementById('boardStage');
+      if (!boardStage) return null;
+
+      let existingNote = document.getElementById(`note-${docId}`);
+      if (existingNote || renderedDocIds.has(docId)) {
+        if (existingNote) return existingNote;
+      }
+
+      renderedDocIds.add(docId);
+
+      let note = document.createElement('div');
+      note.className = 'sticky-note';
+      note.id = `note-${docId}`;
+
+      const randomColor = generateDynamicMorandiColor();
+      note.style.backgroundColor = randomColor;
+
+      const pos = generatePosition(globalNoteCount);
+      globalNoteCount++;
+
+      note.style.left = `${pos.x}px`;
+      note.style.top = `${pos.y}px`;
+
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const requiredHeight = pos.y + NOTE_HEIGHT + 60;
+        if (requiredHeight > boardStage.offsetHeight) {
+          boardStage.style.height = `${requiredHeight}px`;
+        }
+      } else {
+        const pageIndex = Math.floor((globalNoteCount - 1) / NOTES_PER_PAGE);
+        const minCanvasWidth = (pageIndex + 1) * window.innerWidth;
+        if (minCanvasWidth > boardStage.offsetWidth) {
+          boardStage.style.width = `${minCanvasWidth}px`;
+        }
+      }
+
+      const randomRot = (Math.random() * 16 - 8).toFixed(1);
+      const dx1 = (Math.random() * 12 - 6).toFixed(0) + 'px';
+      const dy1 = (Math.random() * 12 - 6).toFixed(0) + 'px';
+      const dx2 = (Math.random() * 14 - 7).toFixed(0) + 'px';
+      const dy2 = (Math.random() * 14 - 7).toFixed(0) + 'px';
+      const duration = (Math.random() * 4 + 10).toFixed(1) + 's';
+
+      note.style.setProperty('--rot', `${randomRot}deg`);
+      note.style.setProperty('--dx1', dx1);
+      note.style.setProperty('--dy1', dy1);
+      note.style.setProperty('--dx2', dx2);
+      note.style.setProperty('--dy2', dy2);
+      note.style.animationDuration = `0.5s, ${duration}`;
+
+      const nickname = escapeHtml(data.nickname || '無名氏');
+      const fullText = escapeHtml(data.text || '');
+      const likesCount = data.likes || 0;
+              const authorText = `— ${nickname}`;
+      // 一般 User：只在自己留言建立後 15 分鐘內可編輯/刪除
+      // Admin：無時間限制，可管理全部留言
+      const canEditDelete = canManageNote(data);
+
+      note.innerHTML = `
+        <div>
+          <div class="sticky-content" id="content-${docId}">${fullText}</div>
+          <div class="more-indicator" id="indicator-${docId}" style="display:none;">[...more]</div>
+        </div>
+        <div class="footer-row">
+          <div class="author-group">
+            <div class="sticky-author" title="${authorText}">${authorText}</div>
+            ${canEditDelete ? `<button class="icon-btn-inline note-edit-btn" id="edit-btn-${docId}" title="編輯">✏️</button>` : ''}
+            ${canEditDelete ? `<button class="icon-btn-inline note-delete-btn" id="del-btn-${docId}" title="刪除">🗑️</button>` : ''}
+          </div>
+          <button class="like-btn" id="like-btn-${docId}">💗 <span id="like-count-${docId}">${likesCount}</span></button>
+        </div>
+      `;
+
+      boardStage.appendChild(note);
+
+      setTimeout(() => {
+        const contentEl = document.getElementById(`content-${docId}`);
+        const indicatorEl = document.getElementById(`indicator-${docId}`);
+        if (contentEl && indicatorEl && contentEl.scrollHeight > contentEl.clientHeight) {
+          indicatorEl.style.display = 'block';
+        }
+      }, 50);
+
+      // 按讚
+      const likeBtn = note.querySelector('.like-btn');
+      if (likeBtn) {
+        likeBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const targetId = note.id.replace('note-', '');
+          try {
+            const noteRef = window.doc(window.db, "sticky_notes", targetId);
+            await window.updateDoc(noteRef, { likes: window.increment(1) });
+          } catch (err) {
+            console.log("按讚失敗：" + err.message);
+          }
+        });
+      }
+
+      // 卡片上的編輯按鈕
+      const editBtn = note.querySelector('.icon-btn-inline[title="編輯"]');
+      if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const targetId = note.id.replace('note-', '');
+          const inputStage = document.getElementById('inputStage');
+          const nicknameInput = document.getElementById('nickname');
+             const messageInput = document.getElementById('message');
+          
+          openEditStage(targetId);
+        });
+      }
+
+      // 刪除
+      const delBtn = note.querySelector('.icon-btn-inline[title="刪除"]');
+      if (delBtn) {
+        delBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const targetId = note.id.replace('note-', '');
+          const currentData = allNotesMap.get(targetId) || data;
+          if (!canManageNote(currentData)) {
+            alert(isAdmin ? '找不到這則留言。' : '這則留言已超過 15 分鐘，或不是你建立的留言。');
+            return;
+          }
+          await deleteNoteFromCloud(targetId);
+        });
+      }
+
+      // 點開放大 Modal
+      note.addEventListener('click', () => {
+        const targetId = note.id.replace('note-', '');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalCard = document.getElementById('modalCard');
+        const modalText = document.getElementById('modalText');
+        const modalAuthor = document.getElementById('modalAuthor');
+        const modalDeleteBtn = document.getElementById('modalDeleteBtn');
+        const modalEditBtn = document.getElementById('modalEditBtn');
+        const modalLikeBtn = document.getElementById('modalLikeBtn');
+        const modalLikeCount = document.getElementById('modalLikeCount');
+        
+        modalCard.style.backgroundColor = randomColor;
+
+        const currentData = allNotesMap.get(targetId) || data;
+        const currentNickname = escapeHtml(currentData.nickname || '無名氏');
+
+        modalText.innerText = currentData.text || '';
+        modalAuthor.innerText = `— ${currentNickname}`;
+        modalLikeCount.innerText = currentData.likes || 0;
+
+        modalDeleteBtn.dataset.currentId = targetId;
+        if(modalEditBtn) modalEditBtn.dataset.currentId = targetId;
+        modalLikeBtn.dataset.currentId = targetId;
+
+        // Admin：不限時間、可管理全部留言
+        // User：僅自己的留言，且建立後 15 分鐘內
+        if (canManageNote(currentData)) {
+          modalDeleteBtn.style.display = 'inline-block';
+          if (modalEditBtn) modalEditBtn.style.display = 'inline-block';
+        } else {
+          modalDeleteBtn.style.display = 'none';
+          if (modalEditBtn) modalEditBtn.style.display = 'none';
+        }
+
+        modalOverlay.style.display = 'flex';
+      });
+
+      return note;
+    }
+
+    // 每分鐘檢查一次，讓 User 的 15 分鐘編輯/刪除權限自然到期。
+    setInterval(() => {
+      allNotesMap.forEach((data, docId) => refreshNoteManageButtons(docId, data));
+    }, 60 * 1000);
+
+    async function deleteNoteFromCloud(docId) {
+      try {
+        const data = allNotesMap.get(docId);
+        if (!data || !canManageNote(data)) {
+          alert(isAdmin ? '找不到這則留言。' : '這則留言已超過 15 分鐘，或不是你建立的留言。');
+          return;
+        }
+
+        if (window.deleteDoc && window.doc && window.db) {
+          await window.deleteDoc(window.doc(window.db, "sticky_notes", docId));
+        }
+      } catch (err) {
+        console.log("刪除失敗：" + err.message);
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
