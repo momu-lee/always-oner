@@ -42,20 +42,10 @@
   <style>
     :root {
       --main-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      --text-dark: #40364d;
-      --accent-rose: #8d72b8;
-      --accent-rose-hover: #765aa3;
-      --error-red: #b94a68;
-
-      --lavender-50: #faf7ff;
-      --lavender-100: #f3edff;
-      --lavender-200: #e7dcfa;
-      --lavender-300: #d6c5f0;
-      --lavender-400: #bca4df;
-      --lavender-500: #9d82c8;
-      --lavender-600: #8d72b8;
-      --lavender-700: #765aa3;
-      --lavender-shadow: rgba(118, 90, 163, 0.18);
+      --text-dark: #3a2e2b;
+      --accent-rose: #8b5a52;
+      --accent-rose-hover: #a36d64;
+      --error-red: #d90429;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -67,7 +57,7 @@
       width: 100vw;
       overflow: hidden;
       position: relative;
-      background-color: #f6f1fc;
+      background-color: #f7f2ef;
     }
 
     /* 右上角鎖頭與 Hover/Click 控制區塊 */
@@ -100,10 +90,10 @@
     .admin-panel {
       display: none;
       background: #ffffff;
-      border: 1px solid #ddd1ee;
+      border: 1px solid #e2d2cc;
       padding: 12px 14px;
       border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(64, 54, 77, 0.18);
+      box-shadow: 0 10px 25px rgba(58, 46, 43, 0.18);
       flex-direction: column;
       gap: 10px;
       min-width: 150px;
@@ -116,8 +106,8 @@
     .admin-panel input {
       font-family: var(--main-font);
       width: 100%;
-      background: #fbf9ff;
-      border: 1px solid #ddd1ee;
+      background: #faf6f5;
+      border: 1px solid #e2d2cc;
       border-radius: 6px;
       padding: 6px 8px;
       font-size: 12px;
@@ -134,7 +124,7 @@
       font-size: 12px;
       font-weight: 600;
       color: var(--text-dark);
-      border-bottom: 1px dashed #ddd1ee;
+      border-bottom: 1px dashed #e2d2cc;
       padding-bottom: 8px;
     }
 
@@ -179,7 +169,7 @@
       justify-content: center;
       align-items: center;
       z-index: 4000;
-      background: rgba(246, 241, 252, 0.80);
+      background: rgba(247, 242, 239, 0.80);
       backdrop-filter: blur(12px);
       padding: 16px;
     }
@@ -189,10 +179,10 @@
       width: 100%;
       max-width: 520px;
       background: #ffffff;
-      border: 1.5px solid #ddd1ee;
+      border: 1.5px solid #e2d2cc;
       padding: 28px 24px;
       border-radius: 24px;
-      box-shadow: 0 25px 50px rgba(118, 90, 163, 0.18);
+      box-shadow: 0 25px 50px rgba(139, 90, 82, 0.18);
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -205,7 +195,7 @@
       right: 18px;
       background: transparent;
       border: none;
-      color: #8875a0;
+      color: #9c7b74;
       font-size: 22px;
       cursor: pointer;
       padding: 4px;
@@ -239,8 +229,8 @@
     .input-card input, .input-card textarea {
       font-family: var(--main-font);
       width: 100%;
-      background: #fbf9ff;
-      border: 1.5px solid #ddd1ee;
+      background: #faf6f5;
+      border: 1.5px solid #e2d2cc;
       border-radius: 12px;
       padding: 12px 14px;
       color: var(--text-dark);
@@ -251,7 +241,7 @@
 
     .input-card input:focus, .input-card textarea:focus {
       border-color: var(--accent-rose);
-      box-shadow: 0 0 0 3px rgba(118, 90, 163, 0.15);
+      box-shadow: 0 0 0 3px rgba(139, 90, 82, 0.15);
     }
 
     .input-card textarea {
@@ -271,7 +261,7 @@
       cursor: pointer;
       font-size: 15px;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(118, 90, 163, 0.25);
+      box-shadow: 0 4px 12px rgba(139, 90, 82, 0.25);
       margin-top: 4px;
     }
     .submit-btn:hover { background: var(--accent-rose-hover); }
@@ -292,7 +282,7 @@
       padding: 10px 18px;
       border-radius: 999px;
       cursor: pointer;
-      box-shadow: 0 8px 24px rgba(64, 54, 77, 0.16);
+      box-shadow: 0 8px 24px rgba(58, 46, 43, 0.16);
       backdrop-filter: blur(8px);
       transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
     }
@@ -300,6 +290,12 @@
       transform: translateX(-50%) translateY(-2px);
       background: #ffffff;
       box-shadow: 0 12px 28px rgba(58, 46, 43, 0.2);
+    }
+
+    /* 編輯/刪除按鈕：手機觸控區域加大，避免點擊失效 */
+    .icon-btn-inline {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     /* ---------------- 階段 2：滾動畫布與電腦/手機獨立背景 ---------------- */
@@ -312,13 +308,13 @@
       position: relative;
       user-select: none;
       -webkit-overflow-scrolling: touch;
-      background-color: #f6f1fc;
+      background-color: #f7f2ef;
     }
     .viewport:active { cursor: grabbing; }
 
     .viewport::-webkit-scrollbar { height: 4px; width: 4px; }
     .viewport::-webkit-scrollbar-thumb {
-      background: rgba(118, 90, 163, 0.25);
+      background: rgba(139, 90, 82, 0.25);
       border-radius: 10px;
     }
 
@@ -406,7 +402,7 @@
       opacity: 1 !important;
       transform: scale(1.08) rotate(0deg) !important;
       z-index: 9999 !important;
-      box-shadow: 0 18px 38px rgba(64, 54, 77, 0.22);
+      box-shadow: 0 18px 38px rgba(58, 46, 43, 0.22);
     }
 
     .sticky-content {
@@ -415,7 +411,7 @@
       line-height: 1.45;
       word-break: break-word;
       white-space: pre-wrap;
-      color: #352d40;
+      color: #2b211f;
       display: -webkit-box;
       -webkit-line-clamp: 4;
       -webkit-box-orient: vertical;
@@ -424,7 +420,7 @@
     }
 
     .more-indicator {
-      color: #715d8d;
+      color: #70504a;
       font-size: 10px;
       font-weight: bold;
       text-align: right;
@@ -435,7 +431,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-top: 1px dashed rgba(64, 54, 77, 0.18);
+      border-top: 1px dashed rgba(58, 46, 43, 0.18);
       padding-top: 4px;
       margin-top: 2px;
     }
@@ -450,7 +446,7 @@
     .sticky-author {
       font-size: 11px;
       font-weight: 700;
-      color: #55456b;
+      color: #5c423d;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -463,7 +459,7 @@
       border: none;
       font-size: 11px;
       cursor: pointer;
-      color: #55456b;
+      color: #5c423d;
       padding: 0 1px;
       line-height: 1;
       transition: transform 0.2s;
@@ -476,7 +472,7 @@
       border: none;
       font-size: 11px;
       cursor: pointer;
-      color: #8d5ca8;
+      color: #b54545;
       display: flex;
       align-items: center;
       gap: 2px;
@@ -492,7 +488,7 @@
       left: 0;
       width: 100vw;
       height: 100svh;
-      background: rgba(64, 54, 77, 0.35);
+      background: rgba(58, 46, 43, 0.35);
       backdrop-filter: blur(8px);
       z-index: 3000;
       display: none;
@@ -508,7 +504,7 @@
       min-height: 200px;
       padding: 24px;
       border-radius: 18px;
-      box-shadow: 0 25px 50px rgba(64, 54, 77, 0.25);
+      box-shadow: 0 25px 50px rgba(58, 46, 43, 0.25);
       border: 1.5px solid rgba(255, 255, 255, 0.9);
       display: flex;
       flex-direction: column;
@@ -522,7 +518,7 @@
       font-size: 15px;
       font-weight: 600;
       line-height: 1.6;
-      color: #352d40;
+      color: #2b211f;
       max-height: 260px;
       overflow-y: auto;
       word-break: break-word;
@@ -542,7 +538,7 @@
     .modal-author {
       font-size: 13px;
       font-weight: 700;
-      color: #55456b;
+      color: #5c423d;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -562,7 +558,7 @@
       border: none;
       font-size: 18px;
       cursor: pointer;
-      color: #55456b;
+      color: #5c423d;
       padding: 4px;
     }
   </style>
@@ -778,25 +774,15 @@
     }
 
     function generateDynamicMorandiColor() {
-      // 全部限制在薰衣草紫色系，只做明度/飽和度的小幅變化。
-      const lavenderPalette = [
-        '#f4edff',
-        '#eee4fb',
-        '#e8dcf8',
-        '#dfd0f2',
-        '#d6c5ee',
-        '#eadff7',
-        '#f0e8fb',
-        '#dcccef'
-      ];
-
-      let color;
+      let hue;
       do {
-        color = lavenderPalette[Math.floor(Math.random() * lavenderPalette.length)];
-      } while (color === lastHue && lavenderPalette.length > 1);
+        hue = Math.floor(Math.random() * 360);
+      } while (lastHue !== null && Math.abs(hue - lastHue) < 25);
+      lastHue = hue;
 
-      lastHue = color;
-      return color;
+      const saturation = Math.floor(Math.random() * 20) + 40;
+      const lightness = Math.floor(Math.random() * 8) + 86;
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     }
 
     const NOTES_PER_PAGE = 15;
@@ -1319,18 +1305,24 @@
         });
       }
 
-      // 卡片上的編輯按鈕
+      // 卡片上的編輯按鈕：電腦/手機都支援，避免手機觸控事件被外層卡片吃掉
       const editBtn = note.querySelector('.icon-btn-inline[title="編輯"]');
       if (editBtn) {
-        editBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
+        let editTriggered = false;
+        const triggerEdit = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          if (editTriggered) return;
+          editTriggered = true;
           const targetId = note.id.replace('note-', '');
-          const inputStage = document.getElementById('inputStage');
-          const nicknameInput = document.getElementById('nickname');
-             const messageInput = document.getElementById('message');
-          
           openEditStage(targetId);
-        });
+          setTimeout(() => { editTriggered = false; }, 400);
+        };
+
+        editBtn.addEventListener('touchend', triggerEdit, { passive: false });
+        editBtn.addEventListener('click', triggerEdit);
       }
 
       // 刪除
