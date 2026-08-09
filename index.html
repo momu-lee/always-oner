@@ -369,7 +369,7 @@
       .board-stage {
         width: 100vw !important;
         min-height: 100svh;
-        height: auto !important;
+        height: 100svh;
         padding-bottom: 100px;
       }
     }
@@ -1223,7 +1223,7 @@
         }
       }, { passive: true });
 
-      const q = window.query(window.messagesRef, window.limit(100));
+      const q = window.query(window.messagesRef);
       
       window.getDocs(q).then((querySnapshot) => {
         querySnapshot.forEach((docSnap) => {
