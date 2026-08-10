@@ -1380,12 +1380,9 @@
       // 避免一次建立數百張便利貼造成 5~10 秒白畫面。
       // ===== Firebase 留言讀取：只保留 1 次 getDocs + 1 個 onSnapshot =====
       // 不再先抓 50 筆、再抓全部、再額外建立第三次讀取。
-      // Instagram 內建瀏覽器：第一批只抓 15 筆，先讓畫面快速出現。
-      // 其他瀏覽器維持原本 50 筆，不改變既有行為。
-      const isInstagramWebView = /Instagram/i.test(navigator.userAgent);
       const initialQuery = window.query(
         window.messagesRef,
-        window.limit(isInstagramWebView ? 15 : 50)
+        window.limit(15)
       );
 
       function renderNotesInChunks(items, chunkSize = 30) {
@@ -1447,99 +1444,89 @@
       });
 
       // ★ 只建立一個 onSnapshot：後續只處理資料異動
-      // IG 先讓第一批 15 筆完成繪製，再建立即時監聽，避免 WebView
-      // 在初次進入時同時處理大量 Firestore snapshot。
-      const startRealtimeListener = () => {
       window.onSnapshot(
-              window.messagesRef,
-              (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                  const docId = change.doc.id;
-                  const data = change.doc.data();
+        window.messagesRef,
+        (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            const docId = change.doc.id;
+            const data = change.doc.data();
 
-                  if (change.type === "added") {
-                    if (renderedDocIds.has(docId)) return;
+            if (change.type === "added") {
+              if (renderedDocIds.has(docId)) return;
 
-                    allNotesMap.set(docId, data);
-                    renderedDocIds.add(docId);
-                    requestAnimationFrame(() => createStickyNote(docId, data));
-                  }
+              allNotesMap.set(docId, data);
+              renderedDocIds.add(docId);
+              requestAnimationFrame(() => createStickyNote(docId, data));
+            }
 
-                  if (change.type === "modified") {
-                    allNotesMap.set(docId, data);
+            if (change.type === "modified") {
+              allNotesMap.set(docId, data);
 
-                    const noteEl = document.getElementById(`note-${docId}`);
-                    if (noteEl) {
-                      const contentEl = document.getElementById(`content-${docId}`);
-                      const nickname = escapeHtml(data.nickname || '無名氏');
-                      const fullText = escapeHtml(data.text || '');
-                      const authorText = `— ${nickname}`;
+              const noteEl = document.getElementById(`note-${docId}`);
+              if (noteEl) {
+                const contentEl = document.getElementById(`content-${docId}`);
+                const nickname = escapeHtml(data.nickname || '無名氏');
+                const fullText = escapeHtml(data.text || '');
+                const authorText = `— ${nickname}`;
 
-                      if (contentEl) contentEl.innerText = fullText;
+                if (contentEl) contentEl.innerText = fullText;
 
-                      const authorEl = noteEl.querySelector('.sticky-author');
-                      if (authorEl) {
-                        authorEl.innerText = authorText;
-                        authorEl.title = authorText;
-                      }
-
-                      const countEl = document.getElementById(`like-count-${docId}`);
-                      if (countEl) countEl.innerText = data.likes || 0;
-
-                      refreshNoteManageButtons(docId, data);
-                    }
-
-                    const modalLikeBtn = document.getElementById('modalLikeBtn');
-                    const modalLikeCount = document.getElementById('modalLikeCount');
-
-                    if (
-                      modalOverlay.style.display === 'flex' &&
-                      modalLikeBtn.dataset.currentId === docId
-                    ) {
-                      modalLikeCount.innerText = data.likes || 0;
-                    }
-                  }
-
-                  if (change.type === "removed") {
-                    allNotesMap.delete(docId);
-                    renderedDocIds.delete(docId);
-
-                    const el = document.getElementById(`note-${docId}`);
-                    if (el) el.remove();
-
-                    if (
-                      modalOverlay.style.display === 'flex' &&
-                      modalDeleteBtn.dataset.currentId === docId
-                    ) {
-                      modalOverlay.style.display = 'none';
-                    }
-                  }
-                });
-
-                updateAdminDashboardStats();
-
-                const indicator = document.getElementById('fastLoadIndicator');
-                if (indicator) {
-                  indicator.style.opacity = '0';
-                  setTimeout(() => indicator.remove(), 250);
+                const authorEl = noteEl.querySelector('.sticky-author');
+                if (authorEl) {
+                  authorEl.innerText = authorText;
+                  authorEl.title = authorText;
                 }
-              },
-              (err) => {
-                console.error("Firebase 留言監聽失敗：", err);
 
-                const indicator = document.getElementById('fastLoadIndicator');
-                if (indicator) {
-                  indicator.innerText = '載入失敗，請重新整理頁面';
-                }
+                const countEl = document.getElementById(`like-count-${docId}`);
+                if (countEl) countEl.innerText = data.likes || 0;
+
+                refreshNoteManageButtons(docId, data);
               }
-            );
-      };
 
-      if (isInstagramWebView) {
-        setTimeout(startRealtimeListener, 1200);
-      } else {
-        startRealtimeListener();
-      }
+              const modalLikeBtn = document.getElementById('modalLikeBtn');
+              const modalLikeCount = document.getElementById('modalLikeCount');
+
+              if (
+                modalOverlay.style.display === 'flex' &&
+                modalLikeBtn.dataset.currentId === docId
+              ) {
+                modalLikeCount.innerText = data.likes || 0;
+              }
+            }
+
+            if (change.type === "removed") {
+              allNotesMap.delete(docId);
+              renderedDocIds.delete(docId);
+
+              const el = document.getElementById(`note-${docId}`);
+              if (el) el.remove();
+
+              if (
+                modalOverlay.style.display === 'flex' &&
+                modalDeleteBtn.dataset.currentId === docId
+              ) {
+                modalOverlay.style.display = 'none';
+              }
+            }
+          });
+
+          updateAdminDashboardStats();
+
+          const indicator = document.getElementById('fastLoadIndicator');
+          if (indicator) {
+            indicator.style.opacity = '0';
+            setTimeout(() => indicator.remove(), 250);
+          }
+        },
+        (err) => {
+          console.error("Firebase 留言監聽失敗：", err);
+
+          const indicator = document.getElementById('fastLoadIndicator');
+          if (indicator) {
+            indicator.innerText = '載入失敗，請重新整理頁面';
+          }
+        }
+      );
     }
 
     function refreshNoteManageButtons(docId, data) {
