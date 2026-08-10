@@ -1371,6 +1371,8 @@
       // 先載入少量留言，讓手機快速出現第一批內容。
       // 其餘留言在背景載入，並用 requestAnimationFrame 分批建立 DOM，
       // 避免一次建立數百張便利貼造成 5~10 秒白畫面。
+      // ===== Firebase 留言讀取：只保留 1 次 getDocs + 1 個 onSnapshot =====
+      // 不再先抓 50 筆、再抓全部、再額外建立第三次讀取。
       const initialQuery = window.query(window.messagesRef, window.limit(50));
 
       function renderNotesInChunks(items, chunkSize = 30) {
@@ -1391,7 +1393,6 @@
 
           updateAdminDashboardStats();
 
-          // 第一批出現後立刻取消載入提示。
           if (index > 0) {
             const indicator = document.getElementById('fastLoadIndicator');
             if (indicator) {
@@ -1408,6 +1409,7 @@
         requestAnimationFrame(renderChunk);
       }
 
+      // ★ Firebase 只執行一次 getDocs：先顯示前 50 筆
       window.getDocs(initialQuery).then((querySnapshot) => {
         const firstBatch = [];
 
@@ -1416,27 +1418,11 @@
         });
 
         renderNotesInChunks(firstBatch, 30);
-
-        // 第一批已經顯示後，再在背景把全部留言抓回來。
-        setTimeout(() => {
-          window.getDocs(window.messagesRef).then((allSnapshot) => {
-            const remaining = [];
-
-            allSnapshot.forEach((docSnap) => {
-              if (!renderedDocIds.has(docSnap.id)) {
-                remaining.push([docSnap.id, docSnap.data()]);
-              }
-            });
-
-            renderNotesInChunks(remaining, 30);
-          }).catch(() => {});
-        }, 150);
-
-      }).catch(() => {
-        console.log("初始化載入中...");
+      }).catch((err) => {
+        console.error("Firebase 初始留言讀取失敗：", err);
       });
 
-      // 即時監聽只處理最近一小批，避免手機開啟時再次接收整個 collection。
+      // ★ 只建立一個 onSnapshot：後續只處理資料異動
       window.onSnapshot(
         window.messagesRef,
         (snapshot) => {
