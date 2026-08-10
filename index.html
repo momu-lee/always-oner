@@ -803,6 +803,24 @@
       outline: none !important;
     }
 
+  
+    /* 便利貼本身要能點開閱讀；文字區不攔截，讓 click 回到 note */
+    .sticky-note {
+      pointer-events: auto !important;
+    }
+
+    .sticky-note .sticky-content,
+    .sticky-note .sticky-author {
+      pointer-events: none !important;
+    }
+
+    .sticky-note .like-btn,
+    .sticky-note .icon-btn-inline {
+      pointer-events: auto !important;
+      position: relative !important;
+      z-index: 10000 !important;
+    }
+
   </style>
 </head>
 <body>
