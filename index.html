@@ -693,6 +693,27 @@
       transition: opacity .2s ease;
     }
 
+  
+    .like-btn {
+      position: relative;
+      z-index: 60;
+      pointer-events: auto;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    @media (max-width: 768px) {
+      .like-btn {
+        min-width: 44px;
+        min-height: 32px;
+        padding: 6px 8px !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1516,19 +1537,35 @@
         }
       }, 50);
 
-      // 按讚
+      // 按讚：滑鼠與手機觸控都使用 pointer 事件，避免滑動畫布時 click 被吃掉
       const likeBtn = note.querySelector('.like-btn');
       if (likeBtn) {
-        likeBtn.addEventListener('click', async (e) => {
+        let likeTriggered = false;
+
+        const triggerLike = async (e) => {
+          e.preventDefault();
           e.stopPropagation();
+
+          if (likeTriggered) return;
+          likeTriggered = true;
+          setTimeout(() => { likeTriggered = false; }, 500);
+
           const targetId = note.id.replace('note-', '');
+
           try {
             const noteRef = window.doc(window.db, "sticky_notes", targetId);
             await window.updateDoc(noteRef, { likes: window.increment(1) });
           } catch (err) {
             console.log("按讚失敗：" + err.message);
           }
-        });
+        };
+
+        likeBtn.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+        }, true);
+
+        likeBtn.addEventListener('pointerup', triggerLike, true);
+        likeBtn.addEventListener('click', triggerLike, true);
       }
 
       // 卡片上的編輯按鈕：電腦/手機都支援，避免手機觸控事件被外層卡片吃掉
