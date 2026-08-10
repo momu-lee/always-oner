@@ -803,6 +803,18 @@
       outline: none !important;
     }
 
+    /* 僅移除愛心按鈕點擊/聚焦時的瀏覽器反白，不改變其他功能 */
+    .sticky-note .like-btn,
+    .sticky-note .like-btn:hover,
+    .sticky-note .like-btn:focus,
+    .sticky-note .like-btn:focus-visible,
+    .sticky-note .like-btn:active {
+      background: transparent !important;
+      outline: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+
   
     /* 便利貼本身要能點開閱讀；文字區不攔截，讓 click 回到 note */
     .sticky-note {
