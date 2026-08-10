@@ -787,6 +787,22 @@
       }
     }
 
+  
+    .sticky-note .like-btn,
+    .sticky-note .like-btn:focus,
+    .sticky-note .like-btn:focus-visible,
+    .sticky-note .like-btn:active {
+      outline: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .sticky-note .like-btn:focus-visible {
+      outline: none !important;
+    }
+
   </style>
 </head>
 <body>
@@ -1337,9 +1353,9 @@
       // 先載入少量留言，讓手機快速出現第一批內容。
       // 其餘留言在背景載入，並用 requestAnimationFrame 分批建立 DOM，
       // 避免一次建立數百張便利貼造成 5~10 秒白畫面。
-      const initialQuery = window.query(window.messagesRef, window.limit(30));
+      const initialQuery = window.query(window.messagesRef, window.limit(50));
 
-      function renderNotesInChunks(items, chunkSize = 8) {
+      function renderNotesInChunks(items, chunkSize = 30) {
         let index = 0;
 
         function renderChunk() {
@@ -1381,7 +1397,7 @@
           firstBatch.push([docSnap.id, docSnap.data()]);
         });
 
-        renderNotesInChunks(firstBatch, 8);
+        renderNotesInChunks(firstBatch, 30);
 
         // 第一批已經顯示後，再在背景把全部留言抓回來。
         setTimeout(() => {
@@ -1394,7 +1410,7 @@
               }
             });
 
-            renderNotesInChunks(remaining, 6);
+            renderNotesInChunks(remaining, 30);
           }).catch(() => {});
         }, 150);
 
@@ -1404,7 +1420,7 @@
 
       // 即時監聽只處理最近一小批，避免手機開啟時再次接收整個 collection。
       window.onSnapshot(
-        window.query(window.messagesRef, window.limit(30)),
+        window.messagesRef,
         (snapshot) => {
           snapshot.docChanges().forEach((change) => {
             const docId = change.doc.id;
@@ -1415,7 +1431,7 @@
 
               allNotesMap.set(docId, data);
               renderedDocIds.add(docId);
-              createStickyNote(docId, data);
+              requestAnimationFrame(() => createStickyNote(docId, data));
             }
 
             if (change.type === "modified") {
