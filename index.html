@@ -8,7 +8,7 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, deleteDoc, doc, updateDoc, increment, getDocs, query, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeFirestore, collection, addDoc, deleteDoc, doc, updateDoc, increment, getDocs, query, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBKtI9ZXlcpjpmAhfdUGK242n8MW5HkLeM",
@@ -22,7 +22,9 @@
 
     // New independent Firebase project: for-oner
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true
+    });
     const messagesRef = collection(db, "sticky_notes");
 
     window.db = db;
@@ -1109,10 +1111,15 @@
       }
     }
 
+    let waited = 0;
     const checkFirebase = setInterval(() => {
       if (window.messagesRef) {
         clearInterval(checkFirebase);
         initApp();
+      } else if (waited++ > 100) {
+        clearInterval(checkFirebase);
+        const el = document.getElementById('fastLoadIndicator');
+        if (el) el.innerText = '載入失敗，請重新整理頁面';
       }
     }, 100);
 
@@ -1418,8 +1425,19 @@
         });
 
         renderNotesInChunks(firstBatch, 30);
+
+        const indicator = document.getElementById('fastLoadIndicator');
+        if (indicator) {
+          indicator.style.opacity = '0';
+          setTimeout(() => indicator.remove(), 250);
+        }
       }).catch((err) => {
         console.error("Firebase 初始留言讀取失敗：", err);
+
+        const indicator = document.getElementById('fastLoadIndicator');
+        if (indicator) {
+          indicator.innerText = '載入失敗，請重新整理頁面';
+        }
       });
 
       // ★ 只建立一個 onSnapshot：後續只處理資料異動
@@ -1490,6 +1508,20 @@
           });
 
           updateAdminDashboardStats();
+
+          const indicator = document.getElementById('fastLoadIndicator');
+          if (indicator) {
+            indicator.style.opacity = '0';
+            setTimeout(() => indicator.remove(), 250);
+          }
+        },
+        (err) => {
+          console.error("Firebase 留言監聽失敗：", err);
+
+          const indicator = document.getElementById('fastLoadIndicator');
+          if (indicator) {
+            indicator.innerText = '載入失敗，請重新整理頁面';
+          }
         }
       );
     }
