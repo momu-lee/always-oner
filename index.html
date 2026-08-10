@@ -677,9 +677,26 @@
       }
     }
 
+  
+    #fastLoadIndicator {
+      position: fixed;
+      left: 50%;
+      top: 72px;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: rgba(118, 90, 163, 0.88);
+      color: #fff;
+      font-size: 13px;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+
   </style>
 </head>
 <body>
+  <div id="fastLoadIndicator">留言載入中…</div>
 
   <!-- 右上角鎖頭與 Hover/Click 控制區塊 -->
   <div class="admin-container" id="adminContainer">
@@ -1223,74 +1240,144 @@
         }
       }, { passive: true });
 
-      const q = window.query(window.messagesRef);
-      
-      window.getDocs(q).then((querySnapshot) => {
-        querySnapshot.forEach((docSnap) => {
-          const docId = docSnap.id;
-          const data = docSnap.data();
-          allNotesMap.set(docId, data);
-          if (!renderedDocIds.has(docId)) {
+      // 先載入少量留言，讓手機快速出現第一批內容。
+      // 其餘留言在背景載入，並用 requestAnimationFrame 分批建立 DOM，
+      // 避免一次建立數百張便利貼造成 5~10 秒白畫面。
+      const initialQuery = window.query(window.messagesRef, window.limit(30));
+
+      function renderNotesInChunks(items, chunkSize = 8) {
+        let index = 0;
+
+        function renderChunk() {
+          const endIndex = Math.min(index + chunkSize, items.length);
+
+          for (; index < endIndex; index++) {
+            const [docId, data] = items[index];
+
+            if (renderedDocIds.has(docId)) continue;
+
+            allNotesMap.set(docId, data);
             renderedDocIds.add(docId);
             createStickyNote(docId, data);
           }
+
+          updateAdminDashboardStats();
+
+          // 第一批出現後立刻取消載入提示。
+          if (index > 0) {
+            const indicator = document.getElementById('fastLoadIndicator');
+            if (indicator) {
+              indicator.style.opacity = '0';
+              setTimeout(() => indicator.remove(), 250);
+            }
+          }
+
+          if (index < items.length) {
+            requestAnimationFrame(renderChunk);
+          }
+        }
+
+        requestAnimationFrame(renderChunk);
+      }
+
+      window.getDocs(initialQuery).then((querySnapshot) => {
+        const firstBatch = [];
+
+        querySnapshot.forEach((docSnap) => {
+          firstBatch.push([docSnap.id, docSnap.data()]);
         });
-        updateAdminDashboardStats();
-      }).catch((err) => {
+
+        renderNotesInChunks(firstBatch, 8);
+
+        // 第一批已經顯示後，再在背景把全部留言抓回來。
+        setTimeout(() => {
+          window.getDocs(window.messagesRef).then((allSnapshot) => {
+            const remaining = [];
+
+            allSnapshot.forEach((docSnap) => {
+              if (!renderedDocIds.has(docSnap.id)) {
+                remaining.push([docSnap.id, docSnap.data()]);
+              }
+            });
+
+            renderNotesInChunks(remaining, 6);
+          }).catch(() => {});
+        }, 150);
+
+      }).catch(() => {
         console.log("初始化載入中...");
       });
 
-      window.onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const docId = change.doc.id;
-          const data = change.doc.data();
+      // 即時監聽只處理最近一小批，避免手機開啟時再次接收整個 collection。
+      window.onSnapshot(
+        window.query(window.messagesRef, window.limit(30)),
+        (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            const docId = change.doc.id;
+            const data = change.doc.data();
 
-          if (change.type === "added") {
-            if (renderedDocIds.has(docId)) return;
+            if (change.type === "added") {
+              if (renderedDocIds.has(docId)) return;
 
-            allNotesMap.set(docId, data);
-            renderedDocIds.add(docId);
-            createStickyNote(docId, data);
-          }
-          if (change.type === "modified") {
-            allNotesMap.set(docId, data);
-            
-            const noteEl = document.getElementById(`note-${docId}`);
-            if (noteEl) {
-              const contentEl = document.getElementById(`content-${docId}`);
-              const nickname = escapeHtml(data.nickname || '無名氏');
-              const fullText = escapeHtml(data.text || '');
-              const authorText = `— ${nickname}`;
-              if (contentEl) contentEl.innerText = fullText;
-              const authorEl = noteEl.querySelector('.sticky-author');
-              if (authorEl) {
-                authorEl.innerText = authorText;
-                authorEl.title = authorText;
+              allNotesMap.set(docId, data);
+              renderedDocIds.add(docId);
+              createStickyNote(docId, data);
+            }
+
+            if (change.type === "modified") {
+              allNotesMap.set(docId, data);
+
+              const noteEl = document.getElementById(`note-${docId}`);
+              if (noteEl) {
+                const contentEl = document.getElementById(`content-${docId}`);
+                const nickname = escapeHtml(data.nickname || '無名氏');
+                const fullText = escapeHtml(data.text || '');
+                const authorText = `— ${nickname}`;
+
+                if (contentEl) contentEl.innerText = fullText;
+
+                const authorEl = noteEl.querySelector('.sticky-author');
+                if (authorEl) {
+                  authorEl.innerText = authorText;
+                  authorEl.title = authorText;
+                }
+
+                const countEl = document.getElementById(`like-count-${docId}`);
+                if (countEl) countEl.innerText = data.likes || 0;
+
+                refreshNoteManageButtons(docId, data);
               }
-              const countEl = document.getElementById(`like-count-${docId}`);
-              if (countEl) countEl.innerText = data.likes || 0;
-              refreshNoteManageButtons(docId, data);
+
+              const modalLikeBtn = document.getElementById('modalLikeBtn');
+              const modalLikeCount = document.getElementById('modalLikeCount');
+
+              if (
+                modalOverlay.style.display === 'flex' &&
+                modalLikeBtn.dataset.currentId === docId
+              ) {
+                modalLikeCount.innerText = data.likes || 0;
+              }
             }
 
-            const modalLikeBtn = document.getElementById('modalLikeBtn');
-            const modalLikeCount = document.getElementById('modalLikeCount');
-            if (modalOverlay.style.display === 'flex' && modalLikeBtn.dataset.currentId === docId) {
-              modalLikeCount.innerText = data.likes || 0;
-            }
-          }
-          if (change.type === "removed") {
-            allNotesMap.delete(docId);
-            renderedDocIds.delete(docId);
+            if (change.type === "removed") {
+              allNotesMap.delete(docId);
+              renderedDocIds.delete(docId);
 
-            const el = document.getElementById(`note-${docId}`);
-            if (el) el.remove();
-            if (modalOverlay.style.display === 'flex' && modalDeleteBtn.dataset.currentId === docId) {
-              modalOverlay.style.display = 'none';
+              const el = document.getElementById(`note-${docId}`);
+              if (el) el.remove();
+
+              if (
+                modalOverlay.style.display === 'flex' &&
+                modalDeleteBtn.dataset.currentId === docId
+              ) {
+                modalOverlay.style.display = 'none';
+              }
             }
-          }
-        });
-        updateAdminDashboardStats();
-      });
+          });
+
+          updateAdminDashboardStats();
+        }
+      );
     }
 
     function refreshNoteManageButtons(docId, data) {
