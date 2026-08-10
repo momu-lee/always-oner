@@ -825,6 +825,28 @@
 
   </style>
 </head>
+<script>
+  // QR Code / WebView 初次開啟時，強制重新整理一次。
+  // 只允許同一個分頁執行一次，避免無限重新整理。
+  (() => {
+    const reloadKey = 'forOner_qr_initial_reload_v1';
+
+    try {
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1');
+
+        window.addEventListener('load', () => {
+          setTimeout(() => {
+            window.location.reload();
+          }, 150);
+        }, { once: true });
+      }
+    } catch (err) {
+      console.warn('無法使用 sessionStorage，略過自動重新整理。', err);
+    }
+  })();
+</script>
+
 <body>
   <div id="fastLoadIndicator">留言載入中…</div>
 
