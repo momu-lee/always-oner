@@ -714,6 +714,31 @@
       }
     }
 
+  
+    .like-btn {
+      position: relative !important;
+      z-index: 100 !important;
+      pointer-events: auto !important;
+      touch-action: manipulation !important;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .like-btn * {
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      .like-btn {
+        min-width: 48px !important;
+        min-height: 38px !important;
+        padding: 7px 10px !important;
+        position: relative !important;
+        z-index: 100 !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1537,35 +1562,45 @@
         }
       }, 50);
 
-      // 按讚：滑鼠與手機觸控都使用 pointer 事件，避免滑動畫布時 click 被吃掉
+      // 按讚：在便利貼本身的 click handler 之前攔截觸控/滑鼠事件。
       const likeBtn = note.querySelector('.like-btn');
       if (likeBtn) {
-        let likeTriggered = false;
+        let likeBusy = false;
 
-        const triggerLike = async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          if (likeTriggered) return;
-          likeTriggered = true;
-          setTimeout(() => { likeTriggered = false; }, 500);
-
-          const targetId = note.id.replace('note-', '');
-
-          try {
-            const noteRef = window.doc(window.db, "sticky_notes", targetId);
-            await window.updateDoc(noteRef, { likes: window.increment(1) });
-          } catch (err) {
-            console.log("按讚失敗：" + err.message);
-          }
-        };
-
+        // Capture phase：先於 note.addEventListener('click') 執行，
+        // 確保愛心點擊不會被便利貼的全文 Modal 事件吃掉。
         likeBtn.addEventListener('pointerdown', (e) => {
           e.stopPropagation();
         }, true);
 
-        likeBtn.addEventListener('pointerup', triggerLike, true);
-        likeBtn.addEventListener('click', triggerLike, true);
+        likeBtn.addEventListener('pointerup', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (likeBusy) return;
+          likeBusy = true;
+
+          const targetId = note.id.replace('note-', '');
+          try {
+            const noteRef = window.doc(window.db, "sticky_notes", targetId);
+
+            // 使用 Firestore atomic increment，避免快速連點/多人按讚造成
+            // 讀取舊數字後覆寫的競態問題。
+            await window.updateDoc(noteRef, {
+              likes: window.increment(1)
+            });
+          } catch (err) {
+            console.log("按讚失敗：" + err.message);
+          } finally {
+            setTimeout(() => { likeBusy = false; }, 300);
+          }
+        }, true);
+
+        // 某些桌面瀏覽器會只產生 click；capture phase 同樣攔截。
+        likeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, true);
       }
 
       // 卡片上的編輯按鈕：電腦/手機都支援，避免手機觸控事件被外層卡片吃掉
@@ -1607,7 +1642,8 @@
       }
 
       // 點開放大 Modal
-      note.addEventListener('click', () => {
+      note.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
         const targetId = note.id.replace('note-', '');
         const modalOverlay = document.getElementById('modalOverlay');
         const modalCard = document.getElementById('modalCard');
